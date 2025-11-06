@@ -32,6 +32,64 @@ import lombok.SneakyThrows;
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.SUITE)
 public class JudgmentsIT extends BaseSearchRelevanceIT {
 
+    @SuppressWarnings("unchecked")
+    private List<String> extractStatuses(Map<String, Object> result) {
+        Map<String, Object> hitsObj = (Map<String, Object>) result.get("hits");
+        List<Map<String, Object>> hits = (List<Map<String, Object>>) hitsObj.get("hits");
+
+        return hits.stream().map(h -> (Map<String, Object>) h.get("_source")).map(src -> (String) src.get("status")).toList();
+    }
+
+    @SneakyThrows
+    private void updateStatus(String id, String status) {
+        makeRequest(
+            adminClient(),
+            "POST",
+            String.format("%s/_update/%s", JUDGMENT_INDEX, id),
+            null,
+            toHttpEntity("{\"doc\": {\"status\": \"" + status + "\"}}"),
+            ImmutableList.of(new BasicHeader(HttpHeaders.USER_AGENT, DEFAULT_USER_AGENT))
+        );
+    }
+
+    @SneakyThrows
+    private String createJudgment(String body) {
+        return entityAsMap(
+            makeRequest(
+                client(),
+                "PUT",
+                JUDGMENTS_URL,
+                null,
+                toHttpEntity(body),
+                ImmutableList.of(new BasicHeader(HttpHeaders.USER_AGENT, DEFAULT_USER_AGENT))
+            )
+        ).get("judgment_id").toString();
+    }
+
+    @SneakyThrows
+    private void assertStatusFilter(String filterStatus, List<String> expectedStatuses) throws Exception {
+        Map<String, Object> result = entityAsMap(
+            makeRequest(
+                client(),
+                "GET",
+                JUDGMENTS_URL,
+                filterStatus == null ? null : Map.of("status", filterStatus),
+                null,
+                ImmutableList.of(new BasicHeader(HttpHeaders.USER_AGENT, DEFAULT_USER_AGENT))
+            )
+        );
+
+        List<String> statuses = extractStatuses(result);
+
+        // must match exactly if we expect one
+        if (expectedStatuses.size() == 1) {
+            assertEquals(expectedStatuses, statuses);
+        } else {
+            // multiple results: ensure contains all expected
+            assertTrue(statuses.containsAll(expectedStatuses));
+        }
+    }
+
     @SneakyThrows
     public void testMainActions_whenImportReadJudgments_thenSuccessful() {
         String requestBody = Files.readString(Path.of(classLoader.getResource("judgment/ImportJudgments.json").toURI()));
@@ -120,4 +178,46 @@ public class JudgmentsIT extends BaseSearchRelevanceIT {
             )
         );
     }
+
+    @SneakyThrows
+    public void testListJudgments_filteringByStatus_thenSuccessful() {
+        String createBase = """
+            {
+              "name": "FilterTest",
+              "type": "IMPORT_JUDGMENT",
+              "judgmentRatings": [
+                {
+                  "query": "shoes",
+                  "ratings": [
+                    { "docId": "abc", "rating": "1.0" }
+                  ]
+                }
+              ]
+            }
+            """;
+
+        // Create 4 judgments
+        String completedId = createJudgment(createBase);
+        String processingId = createJudgment(createBase);
+        String errorId = createJudgment(createBase);
+        String timeoutId = createJudgment(createBase);
+
+        Thread.sleep(DEFAULT_INTERVAL_MS);
+
+        // Force statuses
+        updateStatus(completedId, "COMPLETED");
+        updateStatus(processingId, "PROCESSING");
+        updateStatus(errorId, "ERROR");
+        updateStatus(timeoutId, "TIMEOUT");
+
+        Thread.sleep(DEFAULT_INTERVAL_MS);
+
+        // Asserts
+        assertStatusFilter("COMPLETED", List.of("COMPLETED"));
+        assertStatusFilter("PROCESSING", List.of("PROCESSING"));
+        assertStatusFilter("ERROR", List.of("ERROR"));
+        assertStatusFilter("TIMEOUT", List.of("TIMEOUT"));
+        assertStatusFilter(null, List.of("COMPLETED", "PROCESSING", "ERROR", "TIMEOUT"));
+    }
+
 }
