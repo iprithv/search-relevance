@@ -13,6 +13,7 @@ import static org.opensearch.searchrelevance.common.PluginConstants.JUDGMENT_IND
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.apache.hc.core5.http.HttpHeaders;
@@ -45,7 +46,7 @@ public class JudgmentsIT extends BaseSearchRelevanceIT {
         makeRequest(
             adminClient(),
             "POST",
-            String.format("%s/_update/%s", JUDGMENT_INDEX, id),
+            String.format(Locale.ROOT, "%s/_update/%s", JUDGMENT_INDEX, id),
             null,
             toHttpEntity("{\"doc\": {\"status\": \"" + status + "\"}}"),
             ImmutableList.of(new BasicHeader(HttpHeaders.USER_AGENT, DEFAULT_USER_AGENT))
