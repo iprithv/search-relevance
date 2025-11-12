@@ -13,7 +13,6 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 * Support for adding description in Search Configuration ([#293](https://github.com/opensearch-project/search-relevance/pull/293))
 
 ### Bug Fixes
-* Removed deprecated `AccessController.doPrivileged()` usage in `JsonUtils` to prevent warnings and ensure compatibility with newer Java versions. ([#307](https://github.com/opensearch-project/search-relevance/pull/307))
 
 ### Infrastructure
 
@@ -22,5 +21,6 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Documentation
 
 ### Maintenance
+* Removed deprecated `AccessController.doPrivileged()` usage in `JsonUtils` to prevent warnings and ensure compatibility with newer Java versions. ([#307](https://github.com/opensearch-project/search-relevance/pull/307))
 
 ### Refactoring
