@@ -76,8 +76,6 @@ public class RestGetJudgmentAction extends BaseRestHandler {
         String status = request.param("status");
         if (status != null && !status.isEmpty()) {
             searchSourceBuilder.query(QueryBuilders.termQuery("status.keyword", status.toUpperCase(Locale.ROOT)));
-        } else {
-            searchSourceBuilder.query(QueryBuilders.matchAllQuery());
         }
 
         OpenSearchDocRequest getRequest = new OpenSearchDocRequest(searchSourceBuilder);
